@@ -6,6 +6,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -28,6 +29,8 @@ func (p *Parser) parseSeeds() {
 		re := regexp.MustCompile(`("http)(.*?)(")`)
 		match := re.FindString(scanner.Text())
 		if match != "" {
+			match, _ = strings.CutPrefix(match, "\"")
+			match, _ = strings.CutSuffix(match, "\"")
 			p.Seeds = append(p.Seeds, match)
 		}
 	}

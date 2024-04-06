@@ -15,13 +15,14 @@ func main() {
 
 	parser.parseArguments()
 	parser.parseSeeds()
-	log.Printf("Parser log\n")
-	log.Printf("%+v", parser)
+	// log.Printf("Parser log\n")
+	// log.Printf("%+v", parser)
 
 	crawler := crawl.Crawler{
 		Seeds:          parser.Seeds,
 		TotalCrawlTime: parser.TotalCrawlTime,
 		MaxRequestTime: parser.MaxRequestTime,
+		ErrorLogger:    errorLogger,
 	}
 
 	crawlResults := crawler.StartCrawl()
