@@ -4,6 +4,12 @@ A multithreaded web crawler written in Go.
 
 This is an improved version of [Spidey](/Users/anirudh/Desktop/Spidey_v2_time.png)
 
+## Results
+
+Spidey took 1 minute to crawl 16,572 links
+
+![Spidey took 1 minute to crawl 16572 links](./Spidey_v2_time.png)
+
 ## Usage
 
 1. Clone this repository
@@ -34,9 +40,3 @@ go build
 ./spidey 10 1 5
 #Here, the crawl time is 10s, request delay is 1s and worker count is 10
 ```
-
-## Results
-
-Spidey took 1 minute to crawl 16572 links
-
-![Spidey took 1 minute to crawl 16572 links](./Spidey_v2_time.png)
