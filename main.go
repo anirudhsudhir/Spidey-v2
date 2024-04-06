@@ -18,7 +18,7 @@ func main() {
 	// log.Printf("Parser log\n")
 	// log.Printf("%+v", parser)
 
-	crawler := crawl.Crawler{
+	crawler := crawl.CrawlerConfig{
 		Seeds:          parser.Seeds,
 		TotalCrawlTime: parser.TotalCrawlTime,
 		MaxRequestTime: parser.MaxRequestTime,

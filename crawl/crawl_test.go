@@ -27,7 +27,7 @@ func TestPingWebsites(t *testing.T) {
 	testconfig.initTestServers()
 
 	t.Run("all links crawled", func(t *testing.T) {
-		crawler := crawl.Crawler{
+		crawler := crawl.CrawlerConfig{
 			Seeds:          testconfig.testUrls,
 			TotalCrawlTime: time.Duration(5 * time.Second),
 			MaxRequestTime: time.Duration(1 * time.Millisecond),
@@ -39,7 +39,7 @@ func TestPingWebsites(t *testing.T) {
 		testconfig.stopTestServers()
 
 		if got.TotalCrawls != want {
-			t.Errorf("crawled %d links, want %d links", got, want)
+			t.Errorf("crawled %d links, want %d links", got.TotalCrawls, want)
 		}
 	})
 }
