@@ -29,8 +29,10 @@ func TestPingWebsites(t *testing.T) {
 	t.Run("all links crawled", func(t *testing.T) {
 		crawler := crawl.CrawlerConfig{
 			Seeds:          testconfig.testUrls,
-			TotalCrawlTime: time.Duration(5 * time.Second),
-			MaxRequestTime: time.Duration(1 * time.Millisecond),
+			CrawlTime:      time.Duration(1 * time.Second),
+			RequestDelay:   time.Duration(1 * time.Millisecond),
+			WorkerCount:    3,
+			CrawlStartTime: time.Now(),
 			ErrorLogger:    log.New(os.Stdout, "LOG", log.Ldate|log.Ltime|log.Lshortfile),
 		}
 

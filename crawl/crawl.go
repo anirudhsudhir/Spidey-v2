@@ -1,7 +1,6 @@
 package crawl
 
 import (
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -13,90 +12,81 @@ import (
 )
 
 var (
-	totalCrawls         atomic.Int32
-	successfulCrawls    atomic.Int32
-	failedCrawls        atomic.Int32
-	requestTimeExceeded atomic.Int32
+	totalCrawls      atomic.Int32
+	successfulCrawls atomic.Int32
+	failedCrawls     atomic.Int32
 )
 
 type CrawlerConfig struct {
 	Seeds          []string
-	TotalCrawlTime time.Duration
-	MaxRequestTime time.Duration
+	CrawlTime      time.Duration
+	RequestDelay   time.Duration
+	WorkerCount    int
+	CrawlStartTime time.Time
 	ErrorLogger    *log.Logger
 }
 
 type CrawlResults struct {
-	TotalCrawls         int
-	SuccessfulCrawls    int
-	FailedCrawls        int
-	RequestTimeExceeded int
+	TotalCrawls      int
+	SuccessfulCrawls int
+	FailedCrawls     int
+	CrawledLinks     map[string]string
 }
 
 type Crawler struct {
-	latestCrawl map[string]time.Time
-	stopCrawl   bool
-	lock        sync.RWMutex
-	ErrorLogger *log.Logger
+	requestDelay time.Duration
+	latestCrawl  map[string]time.Time
+	stopCrawl    bool
+	lock         sync.RWMutex
+	crawledLinks sync.Map
+	ErrorLogger  *log.Logger
 }
 
 func (c *CrawlerConfig) StartCrawl() CrawlResults {
-	jobs := make(chan string, 100)
+	jobs := make(chan string, 1000000)
 	crawler := Crawler{
-		latestCrawl: make(map[string]time.Time),
-		ErrorLogger: c.ErrorLogger,
+		requestDelay: c.RequestDelay,
+		latestCrawl:  make(map[string]time.Time),
+		ErrorLogger:  c.ErrorLogger,
 	}
-	numWorkers := 5
-	var wg sync.WaitGroup
 
 	// Initialising channels with seeds
 	for _, url := range c.Seeds {
 		jobs <- url
 	}
 
-	for range numWorkers {
-		wg.Add(1)
-		go crawler.crawlWorker(jobs, &wg)
+	for range c.WorkerCount {
+		go crawler.crawlWorker(jobs)
 	}
 
-	for {
-		if totalCrawls.Load() == 10 {
-			crawler.lock.Lock()
-			crawler.stopCrawl = true
-			crawler.lock.Unlock()
+	time.Sleep(c.CrawlTime)
 
-			time.Sleep(time.Second)
-			close(jobs)
-			break
-		}
-	}
-
-	wg.Wait()
 	crawlResults := CrawlResults{
-		TotalCrawls:         int(totalCrawls.Load()),
-		SuccessfulCrawls:    int(successfulCrawls.Load()),
-		FailedCrawls:        int(failedCrawls.Load()),
-		RequestTimeExceeded: int(requestTimeExceeded.Load()),
+		TotalCrawls:      int(totalCrawls.Load()),
+		SuccessfulCrawls: int(successfulCrawls.Load()),
+		FailedCrawls:     int(failedCrawls.Load()),
+		CrawledLinks:     make(map[string]string),
 	}
+
+	crawler.crawledLinks.Range(func(key, value any) bool {
+		crawlResults.CrawledLinks[key.(string)] = value.(string)
+		return true
+	})
+
 	return crawlResults
 }
 
-func (c *Crawler) crawlWorker(jobs chan string, wg *sync.WaitGroup) {
+func (c *Crawler) crawlWorker(jobs chan string) {
 	for url := range jobs {
 		c.pingURL(url, jobs)
 	}
-	wg.Done()
 }
 
 func (c *Crawler) pingURL(URL string, jobs chan<- string) {
-	// fmt.Println("EDITING", URL)
 	primaryURL, _ := strings.CutPrefix(URL, "https://")
 	primaryURL, _ = strings.CutPrefix(primaryURL, "http://")
-	// fmt.Println("EDITING", primaryURL)
 	primaryURL = strings.Split(primaryURL, "/")[0]
-	// fmt.Println("EDITING", primaryURL)
 	primaryURLs := strings.Split(primaryURL, ".")
-	fmt.Println("EDITING", primaryURL)
 	if len(primaryURLs) < 2 {
 		return
 	}
@@ -108,15 +98,20 @@ func (c *Crawler) pingURL(URL string, jobs chan<- string) {
 
 	if found {
 		timeElapsed := time.Now().Sub(lastPingTime)
-		if timeElapsed < time.Duration(time.Second) {
+		if timeElapsed < c.requestDelay {
 			time.Sleep(timeElapsed)
-			fmt.Println("slept ", timeElapsed, " ", primaryURL)
 		}
 	}
 
 	resp, err := http.Get(URL)
 	if err != nil {
 		c.ErrorLogger.Println(err)
+		failedCrawls.Add(1)
+		c.crawledLinks.Store(URL, "crawl failed")
+		return
+	} else {
+		successfulCrawls.Add(1)
+		c.crawledLinks.Store(URL, "crawled successfully")
 	}
 	c.lock.Lock()
 	c.latestCrawl[primaryURL] = time.Now()
@@ -137,13 +132,9 @@ func (c *Crawler) pingURL(URL string, jobs chan<- string) {
 		if match != "" {
 			match, _ = strings.CutPrefix(match, "\"")
 			match, _ = strings.CutSuffix(match, "\"")
-			// fmt.Println("formatting", match)
 
-			c.lock.RLock()
-			stopCrawl := c.stopCrawl
-			c.lock.RUnlock()
-			if match != "http://" && match != "https://" && match != "http:" && match != "https:" && !stopCrawl {
-				fmt.Println("stopCrawl: ", stopCrawl)
+			_, ok := c.crawledLinks.Load(match)
+			if !ok {
 				jobs <- match
 			}
 		}

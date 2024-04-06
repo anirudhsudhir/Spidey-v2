@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"log"
 	"os"
 	"regexp"
@@ -11,10 +12,11 @@ import (
 )
 
 type Parser struct {
-	Seeds          []string
-	TotalCrawlTime time.Duration
-	MaxRequestTime time.Duration
-	ErrorLogger    *log.Logger
+	Seeds        []string
+	CrawlTime    time.Duration
+	RequestDelay time.Duration
+	WorkerCount  int
+	ErrorLogger  *log.Logger
 }
 
 func (p *Parser) parseSeeds() {
@@ -41,7 +43,7 @@ func (p *Parser) parseSeeds() {
 }
 
 func (p *Parser) parseArguments() {
-	if len(os.Args) < 3 {
+	if len(os.Args) < 4 {
 		p.ErrorLogger.Fatalf("Invalid number of arguments\n")
 	}
 
@@ -49,11 +51,32 @@ func (p *Parser) parseArguments() {
 	if err != nil {
 		p.ErrorLogger.Fatalf("Error while reading arguments: %q\n", err)
 	}
-	requestTime, err := strconv.Atoi(os.Args[2])
+	requestDelay, err := strconv.Atoi(os.Args[2])
 	if err != nil {
 		p.ErrorLogger.Fatalf("Error while reading arguments: %q\n", err)
 	}
+	workerCount, err := strconv.Atoi(os.Args[3])
+	if err != nil {
+		p.ErrorLogger.Fatalf("Error while reading arguments: %q\n", err)
+	}
+	p.CrawlTime = time.Duration(crawlTime) * time.Second
+	p.RequestDelay = time.Duration(requestDelay) * time.Second
+	p.WorkerCount = workerCount
+}
 
-	p.TotalCrawlTime = time.Duration(crawlTime) * time.Second
-	p.MaxRequestTime = time.Duration(requestTime) * time.Millisecond
+func (p *Parser) WriteCrawlData(crawlData map[string]string) {
+	file, err := os.Create("crawl_data.csv")
+	if err != nil {
+		p.ErrorLogger.Fatal(err)
+	}
+	defer file.Close()
+
+	writer := csv.NewWriter(file)
+	for url, status := range crawlData {
+		err := writer.Write([]string{url, status})
+		if err != nil {
+			p.ErrorLogger.Fatal(err)
+		}
+	}
+	writer.Flush()
 }

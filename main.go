@@ -18,18 +18,19 @@ func main() {
 
 	parser.parseArguments()
 	parser.parseSeeds()
-	// log.Printf("Parser log\n")
-	// log.Printf("%+v", parser)
 
 	crawler := crawl.CrawlerConfig{
 		Seeds:          parser.Seeds,
-		TotalCrawlTime: parser.TotalCrawlTime,
-		MaxRequestTime: parser.MaxRequestTime,
+		CrawlTime:      parser.CrawlTime,
+		RequestDelay:   parser.RequestDelay,
+		WorkerCount:    parser.WorkerCount,
+		CrawlStartTime: startTime,
 		ErrorLogger:    errorLogger,
 	}
 
 	crawlResults := crawler.StartCrawl()
-	log.Printf("Crawler log\n")
-	log.Printf("%+v", crawlResults)
+
+	parser.WriteCrawlData(crawlResults.CrawledLinks)
+	log.Printf("Total Crawls: %d, Successful Crawls: %d, Failed Crawls: %d\n", crawlResults.TotalCrawls, crawlResults.SuccessfulCrawls, crawlResults.FailedCrawls)
 	log.Printf("Start time: %q, End time: %q, Duration: %q\n", startTime, time.Now(), time.Since(startTime))
 }
