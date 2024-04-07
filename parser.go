@@ -22,7 +22,7 @@ type Parser struct {
 func (p *Parser) parseSeeds() {
 	seedFile, err := os.Open("seeds.txt")
 	if err != nil {
-		p.ErrorLogger.Fatalf("Error while opening seeds.txt: %q\n", err)
+		p.ErrorLogger.Fatal(err)
 	}
 	defer seedFile.Close()
 
@@ -37,7 +37,7 @@ func (p *Parser) parseSeeds() {
 		}
 	}
 	if err = scanner.Err(); err != nil {
-		p.ErrorLogger.Fatalf("Error reading seeds.txt: %q\n", err)
+		p.ErrorLogger.Fatal(err)
 	}
 	return
 }

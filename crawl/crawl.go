@@ -23,6 +23,7 @@ type CrawlerConfig struct {
 	RequestDelay   time.Duration
 	WorkerCount    int
 	CrawlStartTime time.Time
+	InfoLogger     *log.Logger
 	ErrorLogger    *log.Logger
 }
 
@@ -39,6 +40,7 @@ type Crawler struct {
 	stopCrawl    bool
 	lock         sync.RWMutex
 	crawledLinks sync.Map
+	InfoLogger   *log.Logger
 	ErrorLogger  *log.Logger
 }
 
@@ -47,6 +49,7 @@ func (c *CrawlerConfig) StartCrawl() CrawlResults {
 	crawler := Crawler{
 		requestDelay: c.RequestDelay,
 		latestCrawl:  make(map[string]time.Time),
+		InfoLogger:   c.InfoLogger,
 		ErrorLogger:  c.ErrorLogger,
 	}
 
@@ -62,11 +65,11 @@ func (c *CrawlerConfig) StartCrawl() CrawlResults {
 	time.Sleep(c.CrawlTime)
 
 	crawlResults := CrawlResults{
-		TotalCrawls:      int(totalCrawls.Load()),
-		SuccessfulCrawls: int(successfulCrawls.Load()),
-		FailedCrawls:     int(failedCrawls.Load()),
-		CrawledLinks:     make(map[string]string),
+		TotalCrawls:  int(totalCrawls.Load()),
+		FailedCrawls: int(failedCrawls.Load()),
+		CrawledLinks: make(map[string]string),
 	}
+	crawlResults.SuccessfulCrawls = crawlResults.TotalCrawls - crawlResults.FailedCrawls
 
 	crawler.crawledLinks.Range(func(key, value any) bool {
 		crawlResults.CrawledLinks[key.(string)] = value.(string)
@@ -105,7 +108,7 @@ func (c *Crawler) pingURL(URL string, jobs chan<- string) {
 
 	resp, err := http.Get(URL)
 	if err != nil {
-		c.ErrorLogger.Println(err)
+		c.InfoLogger.Println(err)
 		failedCrawls.Add(1)
 		c.crawledLinks.Store(URL, "crawl failed")
 		return
